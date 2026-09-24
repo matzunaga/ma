@@ -1,0 +1,698 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Ma — Bilateral Pendulum</title>
+<style>
+:root{
+  --ground:#f6f5f1; --ground-edge:#ebeae4; --mist:#dfe2ec; --line:#4a5582; --bob:#4a5582;
+  --wood:#b48a52; --text:#232a45; --dim:#4f5775; --panel:rgba(252,252,250,.86); --edge:rgba(74,85,130,.2);
+  --btn:rgba(74,85,130,.07); --btn-on:rgba(74,85,130,.16);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+  --ground:#161a2c; --ground-edge:#10131f; --mist:#262c4a; --line:#a9b3dc; --bob:#e2e6f7;
+  --wood:#d9b57c; --text:#e8eaf3; --dim:#a8aec8; --panel:rgba(24,28,46,.88); --edge:rgba(200,208,240,.18);
+  --btn:rgba(200,208,240,.07); --btn-on:rgba(200,208,240,.18);
+  }
+}
+:root[data-theme="dark"]{
+  --ground:#161a2c; --ground-edge:#10131f; --mist:#262c4a; --line:#a9b3dc; --bob:#e2e6f7;
+  --wood:#d9b57c; --text:#e8eaf3; --dim:#a8aec8; --panel:rgba(24,28,46,.88); --edge:rgba(200,208,240,.18);
+  --btn:rgba(200,208,240,.07); --btn-on:rgba(200,208,240,.18);
+}
+:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*,*::before,*::after{box-sizing:inherit}
+html,body{height:100%;margin:0;overflow:hidden}
+body{background:var(--ground);transition:background .4s;color:var(--text);
+  font-family:"Avenir Next","Avenir","Segoe UI","Helvetica Neue",system-ui,sans-serif;font-weight:300;
+  -webkit-font-smoothing:antialiased;-webkit-tap-highlight-color:transparent}
+canvas{position:fixed;inset:0;width:100%;height:100%;display:block}
+.mono{font-family:"SF Mono","Menlo","Consolas","Liberation Mono",monospace;font-weight:400}
+
+.bottom{position:fixed;left:0;right:0;bottom:calc(env(safe-area-inset-bottom,0px) + 10px);display:flex;flex-direction:column;
+  align-items:center;gap:12px;pointer-events:none}
+.bottom>*{pointer-events:auto}
+.status{text-align:center;font-size:11.5px;color:var(--dim);letter-spacing:.02em;white-space:nowrap;
+  overflow:hidden;text-overflow:ellipsis;max-width:100vw;padding:0 14px;pointer-events:none!important}
+.dock,.status{transition:opacity .6s ease,transform .6s ease}
+body.hide-ui .dock{opacity:0;transform:translateY(14px);pointer-events:none}
+body.hide-ui .status{opacity:0}
+body.hide-ui .sheet{opacity:0;pointer-events:none}
+body.hide-ui{cursor:none}
+.seal{position:fixed;top:calc(env(safe-area-inset-top,0px) + 22px);left:24px;width:30px;height:38px;border:1.5px solid var(--line);
+  border-radius:4px;color:var(--line);display:grid;place-items:center;font:500 19px "Hiragino Mincho ProN","Yu Mincho","Noto Serif CJK JP",serif;
+  opacity:.7;pointer-events:none}
+.status .k{color:var(--line)}
+.vh{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.hint{width:min(600px,90vw);text-align:center;font-size:15px;font-weight:400;line-height:1.55;color:var(--text);
+  max-height:90px;overflow:hidden;transition:opacity .8s ease,max-height .8s ease,margin .8s ease;pointer-events:none!important}
+.hint small{display:block;color:var(--dim);font-size:13px;margin-top:4px}
+.hint.gone{opacity:0;max-height:0;margin-bottom:-12px}
+
+.dock{width:max-content;
+  display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:center;
+  padding:10px 14px;border-radius:999px;background:var(--panel);border:1px solid var(--edge);
+  -webkit-backdrop-filter:blur(18px);backdrop-filter:blur(18px);max-width:calc(100vw - 24px)}
+.play{width:52px;height:52px;border-radius:50%;border:1px solid var(--edge);background:var(--btn-on);color:var(--text);
+  display:grid;place-items:center;cursor:pointer;flex:none}
+.play svg{width:18px;height:18px;fill:currentColor}
+.grp{display:flex;align-items:center;gap:4px}
+.grp .lab{font-size:12px;color:var(--dim);margin:0 2px 0 4px;letter-spacing:.03em;font-weight:500}
+.seg{border:0;background:var(--btn);color:var(--text);font:inherit;font-size:13.5px;font-weight:500;padding:7px 8px;border-radius:999px;cursor:pointer;
+  transition:background .25s}
+.seg[aria-pressed="true"]{background:var(--btn-on);box-shadow:inset 0 0 0 1px var(--edge);color:var(--text)}
+.sep{width:1px;height:26px;background:var(--edge)}
+input[type=range]{-webkit-appearance:none;appearance:none;width:54px;height:18px;background:transparent;cursor:pointer}
+input[type=range]::-webkit-slider-runnable-track{height:2px;background:var(--edge);border-radius:2px}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;border-radius:50%;background:var(--bob);margin-top:-6px}
+input[type=range]::-moz-range-track{height:2px;background:var(--edge)}
+input[type=range]::-moz-range-thumb{width:14px;height:14px;border:0;border-radius:50%;background:var(--bob)}
+button:focus-visible,input:focus-visible{outline:2px solid var(--line);outline-offset:2px}
+.info-btn{display:grid;place-items:center;width:32px;height:32px;border-radius:50%;border:1px solid var(--edge);background:transparent;color:var(--text);
+  font:italic 400 15px Georgia,serif;cursor:pointer}
+
+.rest{position:fixed;inset:0;display:grid;place-items:center;pointer-events:none;opacity:0;transition:opacity .9s ease}
+.rest.on{opacity:1;pointer-events:auto}
+.rest div{text-align:center;padding:0 24px}
+.rest h2{font-weight:200;font-size:30px;margin:0 0 10px}
+.rest p{color:var(--dim);margin:0 0 22px;font-size:14.5px;line-height:1.6}
+.rest button{font:inherit;font-size:14px;color:var(--text);background:var(--btn-on);border:1px solid var(--edge);
+  padding:11px 26px;border-radius:999px;cursor:pointer}
+
+.sheet{position:fixed;right:18px;bottom:calc(env(safe-area-inset-bottom,0px) + 128px);width:min(380px,calc(100vw - 36px));
+  max-height:62vh;overflow:auto;padding:20px 22px;border-radius:18px;background:var(--panel);border:1px solid var(--edge);
+  -webkit-backdrop-filter:blur(22px);backdrop-filter:blur(22px);font-size:13.5px;line-height:1.6;
+  opacity:0;transform:translateY(8px);pointer-events:none;transition:opacity .35s,transform .35s}
+.sheet.on{opacity:1;transform:none;pointer-events:auto}
+.sheet h3{font-weight:400;font-size:14px;margin:14px 0 4px}
+.sheet h3:first-child{margin-top:0}
+.sheet p{margin:0;color:var(--dim);font-weight:400}
+
+@media (max-width:720px){
+  .status{font-size:10px}
+  .dock{border-radius:24px;gap:10px;padding:10px 12px;width:calc(100vw - 24px)}
+  .sep{display:none}
+  input[type=range]{width:74px}
+  .sheet{top:calc(env(safe-area-inset-top,0px) + 16px);bottom:auto;left:18px;right:18px;width:auto}
+  .seal{left:16px}
+}
+</style>
+</head>
+<body>
+<canvas id="c" aria-hidden="true"></canvas>
+
+<h1 class="vh">Ma, a bilateral pendulum</h1>
+<div class="seal" aria-hidden="true">間</div>
+
+<div class="rest" id="rest" role="dialog" aria-label="Set complete">
+  <div><h2>Set complete</h2><p>Take a breath. Notice what is here now.</p>
+  <button id="cont">Begin next set</button></div>
+</div>
+
+<aside class="sheet" id="sheet" aria-label="About this tool">
+  <h3>Why the light moves this way</h3>
+  <p>The leading explanation for eye movements in EMDR is working memory: following a moving target while holding a memory uses the same limited mental workspace, so the memory tends to lose vividness and charge. Lab studies usually use one full left-right-left cycle per second. One study compared a slow 0.8 and a fast 1.2 cycles per second; faster movement loaded working memory more. Those are the Slow, Standard and Fast settings. Calm, at half a cycle per second, matches common 60 beats per minute bilateral audio tracks.</p>
+  <h3>Why the drum follows the eyes</h3>
+  <p>In lab comparisons, eye movements taxed working memory more than alternating tones. So the pendulum does the main work and the drum marks each side. The drum is synthesized, with overtones placed where a real circular drumhead puts them.</p>
+  <h3>Why these colors</h3>
+  <p>In Valdez and Mehrabian's color study, brightness raised pleasure and lowered arousal, saturation raised arousal, and blue, purple-blue and blue-green were among the most pleasant hues. So the page is bright, low-saturation washi paper painted in a single soft indigo ink, like a sumi-e wash painting, with one warm note: the gold that marks each strike. Night mode keeps the same single ink on deep indigo rather than black, which that study found the most arousing neutral.</p>
+  <h3>Why the wind</h3>
+  <p>Brown noise drops off steeply in the high frequencies and sounds like distant surf or deep wind. Pink noise keeps equal energy in every octave, so it's a little brighter, closer to steady rain, but still far softer than the hiss of white noise. It plays equally in both ears, so it never blurs the left and right of the drum. It swells and fades over tens of seconds, never in time with the beat, and the grass follows the same swell.</p>
+  <h3>What this is for</h3>
+  <p>On your own, this is a regulation tool: settling, grounding, slowing down. Working through trauma with bilateral stimulation belongs with a trained therapist.</p>
+</aside>
+
+<div class="bottom">
+<div class="hint" id="hint">Headphones on. Keep your head still and follow the light with your eyes.
+  <small>Press start, or the space bar. The drum sounds on the side the light reaches.</small></div>
+<nav class="dock" aria-label="Controls">
+  <button class="play" id="play" aria-label="Start"><svg viewBox="0 0 24 24" id="playIcon"><path d="M7 4.5v15l13-7.5z"/></svg></button>
+  <div class="grp" role="group" aria-label="Speed">
+    <span class="lab">speed</span>
+    <button class="seg" data-rate="0.5" aria-pressed="true">Calm</button>
+    <button class="seg" data-rate="0.8" aria-pressed="false">Slow</button>
+    <button class="seg" data-rate="1" aria-pressed="false">Standard</button>
+    <button class="seg" data-rate="1.2" aria-pressed="false">Fast</button>
+  </div>
+  <div class="grp" role="group" aria-label="Drum">
+    <span class="lab">voice</span>
+    <button class="seg" data-voice="odaiko" aria-pressed="true">Ō-daiko</button>
+    <button class="seg" data-voice="nagado" aria-pressed="false">Nagadō</button>
+    <button class="seg" data-voice="felt" aria-pressed="false">Felt</button>
+  </div>
+  <div class="grp" role="group" aria-label="Sets">
+    <span class="lab">sets</span>
+    <button class="seg" data-set="0" aria-pressed="true">Continuous</button>
+    <button class="seg" data-set="24" aria-pressed="false">24 passes</button>
+  </div>
+  <div class="grp"><span class="lab">drums</span><input type="range" id="vol" min="0" max="1" step="0.01" value="0.6" aria-label="Drum volume"></div>
+  <div class="grp" role="group" aria-label="Wind">
+    <span class="lab">wind</span>
+    <button class="seg" data-wind="brown" aria-pressed="true">Brown</button>
+    <button class="seg" data-wind="pink" aria-pressed="false">Pink</button>
+    <button class="seg" data-wind="off" aria-pressed="false">Off</button>
+    <input type="range" id="windVol" min="0" max="1" step="0.01" value="0.35" aria-label="Wind volume"></div>
+  <button class="seg" id="trails" aria-pressed="true">Trail</button>
+  <button class="info-btn" id="hideUi" aria-label="Hide controls (H). Tap anywhere to bring them back." title="Hide controls (H)"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 12s3.5-6 9-6 9 6 9 6-3.5 6-9 6-9-6-9-6z"/><path d="M4 20 20 4"/></svg></button>
+  <button class="info-btn" id="theme" aria-label="Switch to dark mode (T)" title="Dark or light (T)"><svg id="themeIcon" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></svg></button>
+  <button class="info-btn" id="info" aria-label="About this tool" aria-expanded="false">i</button>
+</nav>
+<div class="status mono" id="readout" aria-live="off"></div>
+</div>
+
+<script>
+(() => {
+"use strict";
+const cv = document.getElementById('c'), g = cv.getContext('2d');
+const $ = id => document.getElementById(id);
+const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+/* ---------- theme tokens ---------- */
+let C = {};var buildLayers=null;
+function isNight(){const d=document.documentElement.dataset.theme;return d?d==='dark':matchMedia('(prefers-color-scheme: dark)').matches;}
+let TH={};
+function hexRgb(h){h=h.trim().replace('#','');if(h.length===3)h=h.split('').map(c=>c+c).join('');const n=parseInt(h,16);return[(n>>16)&255,(n>>8)&255,n&255];}
+function readTokens(){const s=getComputedStyle(document.documentElement);
+  ['ground','ground-edge','mist','line','bob','wood'].forEach(k=>C[k]=hexRgb(s.getPropertyValue('--'+k)));}
+const rgba=(c,a)=>`rgba(${c[0]},${c[1]},${c[2]},${a})`;
+readTokens();
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change',()=>{readTokens();buildLayers&&buildLayers();});
+new MutationObserver(()=>{readTokens();buildLayers&&buildLayers();}).observe(document.documentElement,{attributes:true,attributeFilter:['data-theme']});
+
+/* ---------- geometry ---------- */
+let W=0,H=0,DPR=1,G={};
+function resize(){
+  DPR=Math.min(2,window.devicePixelRatio||1);W=innerWidth;H=innerHeight;
+  cv.width=Math.round(W*DPR);cv.height=Math.round(H*DPR);g.setTransform(DPR,0,0,DPR,0,0);
+  const portrait=H>W;
+  const thetaMax=(portrait?40:32)*Math.PI/180;
+  const reach=W*(portrait?0.36:0.40);
+  const L=reach/Math.sin(thetaMax);
+  const lowY=H*(portrait?0.46:0.55);
+  G={thetaMax,L,px:W/2,py:lowY-L,bobR:Math.max(9,Math.min(W,H)*0.018),drumR:Math.max(26,Math.min(W,H)*0.06)};
+}
+addEventListener('resize',()=>{resize();buildLayers();});resize();
+function bobAt(x){const th=x*G.thetaMax;return[G.px+G.L*Math.sin(th),G.py+G.L*Math.cos(th)];}
+
+/* ---------- audio ---------- */
+let ac=null,master=null,verbSend=null,noiseBuf=null;
+const VOICES={
+  odaiko:{f0:58,decay:1.7,noise:.09,stick:700,lp:850},
+  nagado:{f0:92,decay:1.05,noise:.17,stick:1100,lp:1500},
+  felt:{f0:76,decay:1.25,noise:.02,stick:500,lp:620}
+};
+// One slow swell drives both the wind sound and the grass. Two incommensurate waves, about 27 and 41 seconds long, so it never loops audibly.
+function windLevel(t){return .5+.5*(.62*Math.sin(6.2832*t/27+.3)+.38*Math.sin(6.2832*t/41+1.9));}
+let windOn=true,windType='brown',windVol=.35,windNodes=null,comp=null;
+// Brown noise: integrated white noise, falls off steeply with frequency (surf, deep wind).
+// Pink noise: equal energy per octave (Paul Kellet's filter), softer than white, like steady rain.
+function noiseBuffer(type){
+  const len=ac.sampleRate*8,buf=ac.createBuffer(1,len,ac.sampleRate),d=buf.getChannelData(0);
+  if(type==='brown'){let last=0;for(let i=0;i<len;i++){last=(last+.02*(Math.random()*2-1))/1.02;d[i]=last*3.5;}}
+  else{let b0=0,b1=0,b2=0,b3=0,b4=0,b5=0,b6=0;
+    for(let i=0;i<len;i++){const w=Math.random()*2-1;
+      b0=.99886*b0+w*.0555179;b1=.99332*b1+w*.0750759;b2=.969*b2+w*.153852;b3=.8665*b3+w*.3104856;
+      b4=.55*b4+w*.5329522;b5=-.7616*b5-w*.016898;d[i]=(b0+b1+b2+b3+b4+b5+b6+w*.5362)*.11;b6=w*.115926;}}
+  const fade=Math.floor(ac.sampleRate*.5);
+  for(let i=0;i<fade;i++){const k=i/fade;d[len-fade+i]=d[len-fade+i]*(1-k)+d[i]*k;}
+  return {buf,loopEnd:(len-fade)/ac.sampleRate};
+}
+const WIND_TONE={brown:{f0:260,f1:520,trim:1},pink:{f0:900,f1:2200,trim:.8}};
+function windTarget(){return windOn?windVol*windVol*.9:0;}
+function startWind(){
+  if(!ac||windNodes)return;
+  const out=ac.createGain();out.gain.value=0;out.connect(comp);
+  const chain={};
+  for(const type of['brown','pink']){
+    const {buf,loopEnd}=noiseBuffer(type);
+    const src=ac.createBufferSource();src.buffer=buf;src.loop=true;src.loopEnd=loopEnd;
+    const lp=ac.createBiquadFilter();lp.type='lowpass';lp.frequency.value=WIND_TONE[type].f0;lp.Q.value=.3;
+    const swell=ac.createGain();swell.gain.value=.6;
+    const mixG=ac.createGain();mixG.gain.value=type===windType?WIND_TONE[type].trim:0;
+    src.connect(lp).connect(swell).connect(mixG).connect(out);src.start();
+    chain[type]={src,lp,swell,mixG};
+  }
+  windNodes={out,chain};
+  out.gain.setTargetAtTime(windTarget(),ac.currentTime,1.2);
+}
+function setWindType(type){
+  windType=type;
+  if(!windNodes)return;
+  for(const k in windNodes.chain)windNodes.chain[k].mixG.gain.setTargetAtTime(k===type?WIND_TONE[k].trim:0,ac.currentTime,.7);
+}
+function updateWind(){
+  if(!windNodes)return;
+  const w=windLevel(performance.now()/1000),t=ac.currentTime;
+  for(const k in windNodes.chain){const c=windNodes.chain[k],tone=WIND_TONE[k];
+    c.swell.gain.setTargetAtTime(.35+.65*w,t,.6);c.lp.frequency.setTargetAtTime(tone.f0+(tone.f1-tone.f0)*w,t,.6);}
+}
+setInterval(updateWind,120);
+function initAudio(){
+  if(ac)return;
+  ac=new (window.AudioContext||window.webkitAudioContext)();
+  master=ac.createGain();master.gain.value=vol*vol;
+  comp=ac.createDynamicsCompressor();comp.threshold.value=-14;comp.ratio.value=3;
+  master.connect(comp).connect(ac.destination);
+  setTimeout(startWind,0);
+  // generated hall impulse
+  const len=Math.floor(ac.sampleRate*2.2),ir=ac.createBuffer(2,len,ac.sampleRate);
+  for(let ch=0;ch<2;ch++){const d=ir.getChannelData(ch);for(let i=0;i<len;i++){d[i]=(Math.random()*2-1)*Math.pow(1-i/len,3.2);}}
+  const conv=ac.createConvolver();conv.buffer=ir;
+  verbSend=ac.createGain();verbSend.gain.value=.16;verbSend.connect(conv).connect(master);
+  noiseBuf=ac.createBuffer(1,Math.floor(ac.sampleRate*.08),ac.sampleRate);
+  const nd=noiseBuf.getChannelData(0);for(let i=0;i<nd.length;i++)nd[i]=Math.random()*2-1;
+}
+function strike(t,side){
+  const v=VOICES[voice];
+  const lp=ac.createBiquadFilter();lp.type='lowpass';lp.frequency.value=v.lp;lp.Q.value=.5;
+  let out=lp;
+  if(ac.createStereoPanner){const p=ac.createStereoPanner();p.pan.value=side*.92;lp.connect(p);out=p;}
+  out.connect(master);out.connect(verbSend);
+  // membrane modes: circular drumhead overtone ratios (Bessel zeros) 1, 1.59, 2.14
+  [[1,1,1],[1.593,.32,.5],[2.136,.14,.3]].forEach(([r,amp,dk])=>{
+    const o=ac.createOscillator(),e=ac.createGain();o.type='sine';
+    const f=v.f0*r;o.frequency.setValueAtTime(f*1.55,t);
+    o.frequency.exponentialRampToValueAtTime(f,t+.09);o.frequency.exponentialRampToValueAtTime(f*.9,t+v.decay*dk);
+    e.gain.setValueAtTime(0,t);e.gain.linearRampToValueAtTime(amp*.55,t+.005);
+    e.gain.exponentialRampToValueAtTime(.0001,t+v.decay*dk);
+    o.connect(e).connect(lp);o.start(t);o.stop(t+v.decay*dk+.05);
+  });
+  if(v.noise>0){
+    const n=ac.createBufferSource();n.buffer=noiseBuf;
+    const bp=ac.createBiquadFilter();bp.type='bandpass';bp.frequency.value=v.stick;bp.Q.value=.8;
+    const e=ac.createGain();e.gain.setValueAtTime(v.noise,t);e.gain.exponentialRampToValueAtTime(.0001,t+.05);
+    n.connect(bp).connect(e).connect(lp);n.start(t);n.stop(t+.08);
+  }
+}
+
+/* ---------- state ---------- */
+let rate=.5,voice='odaiko',setLen=0,vol=.6,trailsOn=!reduceMotion;
+let state='idle';          // idle | pulling | running | ending | rest
+let seg=null,nextSeg=null; // {t0,T,side0}
+let sched={idx:0,count:0}; // scheduling cursor within seg
+let lastSched=null;        // {t,side}
+let hits=[];               // {t,side,shown}
+let passes=0,setPasses=0,setNo=1,elapsed=0,lastNow=0;
+let pull=null,glide=null,stopAt=Infinity,xNow=0;
+let wakeLock=null;
+const trail=[];
+const drumGlow=[0,0];const ripples=[];
+
+const now=()=>ac?ac.currentTime:performance.now()/1000;
+
+function start(){
+  initAudio();if(ac.state==='suspended')ac.resume();
+  $('hint').classList.add('gone');$('rest').classList.remove('on');
+  state='pulling';pull={t:now(),from:xNow,dur:.9};setPasses=0;stopAt=Infinity;
+  setPlayIcon(true);requestWake();
+}
+function release(){
+  const t0=now()+.03;
+  seg={t0,T:1/rate,side0:-1};nextSeg=null;sched={idx:0};lastSched=null;state='running';
+}
+function stop(toRest){
+  // let already-scheduled hits finish, then glide to centre
+  stopAt=lastSched?lastSched.t:now();
+  state='ending';glide=null;restAfter=toRest;
+  document.body.classList.remove('hide-ui');
+  setPlayIcon(false);
+}
+let restAfter=false;
+function setPlayIcon(playing){
+  $('playIcon').innerHTML=playing?'<path d="M6.5 4.5h4v15h-4zM13.5 4.5h4v15h-4z"/>':'<path d="M7 4.5v15l13-7.5z"/>';
+  $('play').setAttribute('aria-label',playing?'Pause':'Start');
+}
+async function requestWake(){try{if('wakeLock' in navigator&&!wakeLock){wakeLock=await navigator.wakeLock.request('screen');wakeLock.addEventListener('release',()=>wakeLock=null);}}catch(e){}}
+function releaseWake(){try{wakeLock&&wakeLock.release();}catch(e){}wakeLock=null;}
+
+function schedule(){
+  if(state!=='running'||!ac)return;
+  const horizon=ac.currentTime+.2;
+  for(;;){
+    const s=nextSeg||seg;
+    const t=s.t0+sched.idx*s.T/2;
+    if(t>horizon)break;
+    const side=s.side0*(sched.idx%2?-1:1);
+    if(!(lastSched&&Math.abs(lastSched.t-t)<1e-4)){
+      strike(t,side);hits.push({t,side,shown:false});lastSched={t,side};setPasses++;
+      if(setLen&&setPasses>=setLen){sched.idx++;stop(true);return;}
+    }
+    sched.idx++;
+  }
+}
+setInterval(schedule,25);
+
+function changeRate(r){
+  rate=r;
+  if(state==='running'&&lastSched){
+    // new segment begins at the last scheduled extreme so phase stays continuous
+    nextSeg={t0:lastSched.t,T:1/rate,side0:lastSched.side};sched={idx:1};
+  }
+  updateReadout();
+}
+
+/* ---------- position ---------- */
+const ease=u=>u<.5?2*u*u:1-Math.pow(-2*u+2,2)/2;
+function position(t){
+  if(state==='pulling'){
+    const u=Math.min(1,(t-pull.t)/pull.dur);
+    if(u>=1){release();return -1;}
+    return pull.from+(-1-pull.from)*ease(u);
+  }
+  if(state==='running'||(state==='ending'&&t<stopAt)){
+    if(nextSeg&&t>=nextSeg.t0){seg=nextSeg;nextSeg=null;}
+    return seg.side0*Math.cos(2*Math.PI*(t-seg.t0)/seg.T);
+  }
+  if(state==='ending'){
+    if(!glide)glide={t:stopAt,from:lastSched?lastSched.side:xNow,dur:1.6};
+    const u=Math.min(1,(t-glide.t)/glide.dur);
+    if(u>=1){
+      state=restAfter?'rest':'idle';releaseWake();
+      if(restAfter){$('rest').classList.add('on');$('cont').focus();}
+      return 0;
+    }
+    return glide.from*(1-ease(u));
+  }
+  return 0;
+}
+
+/* ---------- readout ---------- */
+function fmt(s){s=Math.floor(s);return String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0');}
+function updateReadout(){
+  const Lm=9.80665/(4*Math.PI*Math.PI*rate*rate);
+  const parts=[fmt(elapsed),rate.toFixed(2)+' Hz',passes+(passes===1?' pass':' passes'),
+    setLen?`set ${setNo}, ${Math.min(setPasses,setLen)} of ${setLen}`:'continuous','string '+Lm.toFixed(2)+' m'];
+  $('readout').innerHTML='<span class="k">Ma 間</span>   '+parts.join('   ·   ');
+}
+updateReadout();
+
+/* ---------- drawing ---------- */
+const mix=(a,b,k)=>[a[0]+(b[0]-a[0])*k,a[1]+(b[1]-a[1])*k,a[2]+(b[2]-a[2])*k].map(Math.round);
+let seed=7;const rnd=()=>{let t=(seed=(seed+0x6D2B79F5)|0);t=Math.imul(t^(t>>>15),t|1);t^=t+Math.imul(t^(t>>>7),t|61);return((t^(t>>>14))>>>0)/4294967296;};
+const ridges=[0,1,2,3].map(i=>({f:[.0016+rnd()*.0012,.004+rnd()*.003,.011+rnd()*.006],p:[rnd()*6.3,rnd()*6.3,rnd()*6.3]}));
+const fog=[0,1,2,3].map(i=>[0,1,2].map(j=>({x:rnd(),sp:.004+rnd()*.006,w:.35+rnd()*.3})));
+function ridgeY(r,x,base,amp){const f=r.f,p=r.p;
+  return base-amp*(.55*Math.sin(x*f[0]+p[0])+.30*Math.sin(x*f[1]+p[1])+.15*Math.sin(x*f[2]+p[2])+.4);}
+// Sumi-e wash painting on washi paper, all generated here: a pale moon in a peach cloud wash,
+// far ink-wash mountains dissolving into mist, and susuki grass bending in the lower left.
+// Soft areas are painted small and scaled up, which blurs them like wet paper.
+const layers={};
+const gauss=()=>{let u=0;for(let i=0;i<4;i++)u+=rnd();return (u-2)/2;};
+function mkCanvas(key,sc){const c=layers[key]||document.createElement('canvas');
+  c.width=Math.max(8,Math.round(W*sc));c.height=Math.max(8,Math.round(H*sc));layers[key]=c;
+  const o=c.getContext('2d');o.setTransform(sc,0,0,sc,0,0);o.clearRect(0,0,W,H);return o;}
+function moonGeom(){const mr=Math.max(24,Math.min(W,H)*.075);return{mr,mx:W-mr*1.7-W*.03,my:H*.04+mr*1.2};}
+function blob(o,x,y,r,col,a){const gr=o.createRadialGradient(x,y,0,x,y,r);
+  gr.addColorStop(0,`rgba(${col},${a})`);gr.addColorStop(1,`rgba(${col},0)`);o.fillStyle=gr;o.fillRect(x-r,y-r,r*2,r*2);}
+buildLayers=function(){
+  const S=Math.min(W,H),portrait=H>W,INK=C.line.join(','),PALE=mix(C.line,C.ground,.45).join(',');
+  const night=isNight();
+  TH=night?{hi:mix(C.ground,C.line,.4).join(','),hiA:.22,lo:'0,0,0',loA:.7,fleck:'0,0,0',mist:mix(C.ground,C.mist,.35).join(','),
+             moon:'212,217,236',moonA:.82,form:.12}
+           :{hi:'255,255,255',hiA:1,lo:'112,106,92',loA:1,fleck:'96,88,72',mist:'250,250,248',moon:'255,255,254',moonA:.97,form:1};
+  // washi paper: cloudy formation where the pulp settled unevenly, long kozo fibres, fine grain
+  seed=3;let o=mkCanvas('formation',1/3);
+  for(let i=0;i<140;i++){const x=rnd()*W,y=rnd()*H,r=Math.min(W,H)*(.02+rnd()*.05);
+    blob(o,x,y,r,TH.hi,(.08+rnd()*.1)*TH.form);}
+  const pd=Math.min(2,window.devicePixelRatio||1);
+  o=mkCanvas('paper',pd);
+  o.lineCap='round';
+  for(let i=0;i<W*H/2600;i++){
+    const x=rnd()*W,y=rnd()*H,L=6+Math.pow(rnd(),2)*70,a0=rnd()*6.283,curl=(rnd()-.5)*1.6;
+    const dark=rnd()<.6;
+    o.strokeStyle=dark?`rgba(${TH.lo},${(.03+rnd()*.04)*TH.loA})`:`rgba(${TH.hi},${(.25+rnd()*.3)*TH.hiA})`;
+    o.lineWidth=dark?.45+rnd()*.5:.8+rnd()*.9;
+    o.beginPath();o.moveTo(x,y);
+    const mx=x+Math.cos(a0)*L*.5+Math.cos(a0+1.57)*L*curl*.2,my=y+Math.sin(a0)*L*.5+Math.sin(a0+1.57)*L*curl*.2;
+    o.quadraticCurveTo(mx,my,x+Math.cos(a0+curl*.3)*L,y+Math.sin(a0+curl*.3)*L);o.stroke();
+  }
+  for(let i=0;i<W*H/140;i++){o.fillStyle=rnd()<.5?`rgba(${TH.lo},${.05*TH.loA})`:`rgba(${TH.hi},${.45*TH.hiA})`;
+    o.fillRect(rnd()*W,rnd()*H,.5+rnd()*1.1,.5+rnd()*1.1);}
+  // an occasional bark fleck, as in kozo paper
+  for(let i=0;i<Math.round(W*H/60000);i++){const x=rnd()*W,y=rnd()*H;
+    o.fillStyle=`rgba(${TH.fleck},${.08+rnd()*.08})`;o.beginPath();o.ellipse(x,y,.8+rnd()*1.8,.5+rnd()*.8,rnd()*3,0,6.283);o.fill();}
+  // peach and rose cloud wash around the moon
+  seed=17;o=mkCanvas('wash',1/1.5);
+  const {mr,mx,my}=moonGeom();
+  const warm=[PALE,PALE,INK,PALE];
+  for(let i=0;i<22;i++){const x=mx-mr*2+gauss()*W*.15,y=my+gauss()*mr*1.2,r=mr*(1.1+rnd()*1.8);
+    blob(o,x,y,r,warm[i%4],.035+rnd()*.035);}
+  // mountains: far pale lavender range and a nearer blue one, bases dissolving into mist
+  seed=29;o=mkCanvas('mount',1/2.5);
+  const baseY=H*(portrait?.8:.78),x0=W*(portrait?.28:.42);
+  const range=(peaks,col,alpha,hScale,sc)=>{
+    const ph=peaks.map(([px,h])=>({x:x0+(W-x0)*px,h:S*h*hScale,w:S*(.07+h*.9)}));
+    const nz=[rnd()*9,rnd()*9,rnd()*9];
+    const ridge=x=>{let y=0;for(const p of ph){const d=Math.abs(x-p.x)/p.w;if(d<1)y=Math.max(y,p.h*Math.pow(1-d,1.35)*(1-.25*d*d));}
+      y+=S*.004*(Math.sin(x*.05+nz[0])+.6*Math.sin(x*.13+nz[1])+.35*Math.sin(x*.31+nz[2]));
+      return baseY-Math.max(0,y);};
+    // three offset passes of thin wash, like layered glazes
+    for(let pass=0;pass<3;pass++){
+      const ox=(rnd()-.5)*S*.01,oy=(rnd()-.5)*S*.004;
+      o.beginPath();o.moveTo(x0-W*.08,baseY);
+      for(let x=x0-W*.08;x<=W+10;x+=3)o.lineTo(x+ox,ridge(x)+oy);
+      o.lineTo(W+10,baseY);o.closePath();
+      const gr=o.createLinearGradient(0,baseY-S*.2*hScale,0,baseY);
+      gr.addColorStop(0,`rgba(${col},${alpha*.45})`);gr.addColorStop(.5,`rgba(${col},${alpha*.24})`);gr.addColorStop(1,`rgba(${col},0)`);
+      o.fillStyle=gr;o.fill();
+    }
+    // pigment pooling along the ridge edge
+    o.strokeStyle=`rgba(${col},${alpha*.5})`;o.lineWidth=1.4;o.beginPath();
+    for(let x=x0;x<=W+10;x+=3){const y=ridge(x);x===x0?o.moveTo(x,y):o.lineTo(x,y);}o.stroke();
+    // a few dry-brush streaks down the slopes
+    for(let i=0;i<26;i++){const x=x0+(W-x0)*rnd(),y=ridge(x);if(baseY-y<S*.02)continue;
+      o.strokeStyle=`rgba(${col},${alpha*(.12+rnd()*.15)})`;o.lineWidth=1+rnd()*2;
+      o.beginPath();o.moveTo(x,y+2);o.lineTo(x+(rnd()-.5)*S*.03,y+(baseY-y)*(.3+rnd()*.4));o.stroke();}
+  };
+  range([[.04,.05],[.2,.09],[.37,.15],[.56,.1],[.74,.17],[.93,.09]],PALE,.55,1);
+  range([[.16,.05],[.44,.08],[.63,.12],[.87,.07]],INK,.42,.95);
+  // small tree dabs on the near slopes
+  for(let i=0;i<70;i++){const x=x0+(W-x0)*(.3+rnd()*.7),y=baseY-S*(.01+rnd()*.05);
+    o.fillStyle=`rgba(${INK},${.06+rnd()*.08})`;o.beginPath();o.ellipse(x,y,S*(.004+rnd()*.006),S*.003,0,0,Math.PI*2);o.fill();}
+  // mist swallowing the mountain feet
+  for(let i=0;i<24;i++)blob(o,x0+rnd()*(W-x0)*1.1,baseY+gauss()*S*.02,S*(.05+rnd()*.07),TH.mist,.55);
+  // ground mist under the grass
+  seed=41;o=mkCanvas('gmist',1/2);
+  const gx=W*(portrait?.02:.03),gy=H*.97,gs=S*(portrait?.95:.78);
+  for(let i=0;i<40;i++)blob(o,gx+rnd()*gs*.75,gy-rnd()*gs*.12,gs*(.05+rnd()*.08),PALE,.05+rnd()*.05);
+  // susuki grass: repainted every other frame so it can sway
+  mkCanvas('grass',Math.min(2,window.devicePixelRatio||1));
+  grassCfg={gx,gy,gs,S,INK,sc:Math.min(2,window.devicePixelRatio||1)};
+  paintGrass(performance.now()/1000);
+};
+let grassCfg=null;
+// Each stem sways around its root on its own slow period (roughly 7 to 13 seconds), with a second,
+// slower wave mixed in so the motion never repeats exactly. The tip moves most, the root not at all.
+function paintGrass(t){
+  if(!grassCfg||!layers.grass)return;
+  const {gx,gy,gs,S,INK,sc}=grassCfg,o=layers.grass.getContext('2d');
+  o.setTransform(sc,0,0,sc,0,0);o.clearRect(0,0,W,H);
+  seed=53;
+  const stems=12;
+  for(let k=0;k<stems;k++){
+    const depth=rnd(),a=.18+(1-depth)*.55;
+    const hue=INK;
+    const period=7+rnd()*6,phase=rnd()*6.283;
+    const wl=windOn?windLevel(t):.35;
+    const sw=reduceMotion?0:(.6+.8*wl)*(.65*Math.sin(6.283*t/period+phase)+.35*Math.sin(6.283*t/(period*2.4)+phase*1.7))*.8+(wl-.5)*.7;
+    const bx=gx+gs*(.02+k*.045+rnd()*.02),by=gy+gs*.04;
+    const tx0=bx+gs*(.12+rnd()*.14),ty0=gy-gs*(.26+rnd()*.2);
+    const reach=(by-ty0)/gs,dx=gs*.028*sw*reach;
+    const tx=tx0+dx,ty=ty0+Math.abs(dx)*.15;
+    const cx=bx+gs*.02+dx*.35,cy=ty+gs*.05;
+    const P=u=>[(1-u)*(1-u)*bx+2*(1-u)*u*cx+u*u*tx,(1-u)*(1-u)*by+2*(1-u)*u*cy+u*u*ty];
+    for(let i=0;i<20;i++){const[x1,y1]=P(i/20),[x2,y2]=P((i+1)/20);
+      o.strokeStyle=`rgba(${hue},${a*(.9-i/40)})`;o.lineWidth=S*.0028*(1-i/24)+.4;o.lineCap='round';
+      o.beginPath();o.moveTo(x1,y1);o.lineTo(x2,y2);o.stroke();}
+    const len=gs*(.17+rnd()*.09),ang0=Math.atan2(ty-cy,tx-cx)+sw*.06;
+    let px=tx,py=ty,ang=ang0;
+    const N=46;
+    for(let i=0;i<N;i++){
+      const u=i/N;ang+=.022+sw*.0015;const step=len/N;px+=Math.cos(ang)*step;py+=Math.sin(ang)*step;
+      const hl=len*.3*Math.sin(Math.PI*Math.min(1,u*1.05))+2;
+      for(let h=0;h<3;h++){
+        const ha=ang+.3+rnd()*.5+sw*.05, bend=.2+rnd()*.15;
+        o.strokeStyle=`rgba(${hue},${a*(.18+rnd()*.3)})`;o.lineWidth=.6;
+        const ex=px+Math.cos(ha)*hl,ey=py+Math.sin(ha)*hl;
+        o.beginPath();o.moveTo(px,py);o.quadraticCurveTo(px+Math.cos(ha-bend)*hl*.6,py+Math.sin(ha-bend)*hl*.6,ex,ey);o.stroke();
+      }
+      if(rnd()<.5){const ha=ang-.5-rnd()*.4;o.strokeStyle=`rgba(${hue},${a*.2})`;o.lineWidth=.5;
+        o.beginPath();o.moveTo(px,py);o.lineTo(px+Math.cos(ha)*hl*.35,py+Math.sin(ha)*hl*.35);o.stroke();}
+      o.strokeStyle=`rgba(${hue},${a*.85})`;o.lineWidth=1.1;o.beginPath();o.moveTo(px-Math.cos(ang)*step,py-Math.sin(ang)*step);o.lineTo(px,py);o.stroke();
+    }
+  }
+  for(let i=0;i<16;i++){const x=gx+gs*rnd()*.55,y=gy+gs*.03,h=gs*(.05+rnd()*.1),lean=(rnd()-.3)*gs*.05;
+    const sw=reduceMotion?0:Math.sin(6.283*t/9+i);
+    o.strokeStyle=`rgba(${INK},${.18+rnd()*.25})`;o.lineWidth=.8;o.beginPath();o.moveTo(x,y);o.quadraticCurveTo(x+lean*.3,y-h*.6,x+lean+sw*h*.05,y-h);o.stroke();}
+}
+buildLayers();
+function drawBackground(t){
+  const drift=reduceMotion?0:t;
+  g.fillStyle=rgba(C.ground,1);g.fillRect(0,0,W,H);
+  g.imageSmoothingEnabled=true;g.imageSmoothingQuality='high';
+  layers.formation&&g.drawImage(layers.formation,0,0,W,H);
+  layers.paper&&g.drawImage(layers.paper,0,0,W,H);
+  layers.wash&&g.drawImage(layers.wash,0,0,W,H);
+  const{mr,mx,my}=moonGeom();
+  if(isNight()){const mg=g.createRadialGradient(mx,my,mr*.9,mx,my,mr*3.2);mg.addColorStop(0,`rgba(${TH.moon},.14)`);mg.addColorStop(1,`rgba(${TH.moon},0)`);
+    g.fillStyle=mg;g.fillRect(mx-mr*3.2,my-mr*3.2,mr*6.4,mr*6.4);}
+  g.fillStyle=`rgba(${TH.moon},${TH.moonA})`;g.beginPath();g.arc(mx,my,mr,0,Math.PI*2);g.fill();
+  layers.mount&&g.drawImage(layers.mount,0,0,W,H);
+  // mist drifting across the mountain feet, very slowly
+  const baseY=H*(H>W?.8:.78);
+  for(let j=0;j<3;j++){const f=fog[0][j];
+    const fx=((f.x+drift*f.sp*.5)%1+1)%1*(W*1.6)-W*.3,rh=H*.05,rw=W*f.w;
+    g.save();g.translate(fx,baseY-H*.02);g.scale(rw/rh,1);
+    const fg=g.createRadialGradient(0,0,0,0,0,rh);fg.addColorStop(0,`rgba(${TH.mist},.55)`);fg.addColorStop(1,`rgba(${TH.mist},0)`);
+    g.fillStyle=fg;g.fillRect(-rh,-rh,rh*2,rh*2);g.restore();}
+  layers.gmist&&g.drawImage(layers.gmist,0,0,W,H);
+  if(!reduceMotion&&(grassTick=(grassTick+1)%2)===0)paintGrass(t);
+  layers.grass&&g.drawImage(layers.grass,0,0,W,H);
+}
+let grassTick=0;
+function drawArcGuide(){
+  g.save();g.strokeStyle=rgba(C.line,.16);g.lineWidth=1;g.setLineDash([2,7]);
+  g.beginPath();
+  const a0=Math.PI/2-G.thetaMax,a1=Math.PI/2+G.thetaMax;
+  g.arc(G.px,G.py,G.L,a0,a1);g.stroke();g.restore();
+}
+function drawDrum(side,glow,t){
+  const [x,y]=bobAt(side),R=G.drumR;
+  if(glow>.01){const gg=g.createRadialGradient(x,y,0,x,y,R*1.6);
+    gg.addColorStop(0,rgba(C.wood,.16*glow));gg.addColorStop(1,rgba(C.wood,0));g.fillStyle=gg;g.fillRect(x-R*1.6,y-R*1.6,R*3.2,R*3.2);}
+  g.lineWidth=1.2;g.strokeStyle=rgba(mix(C.line,C.wood,glow),.16+glow*.45);
+  g.beginPath();g.arc(x,y,R,0,Math.PI*2);g.stroke();
+}
+// Echo: three rings leave each struck drum a beat apart, like sound spreading from the skin.
+function drawRipples(t){
+  for(let i=ripples.length-1;i>=0;i--){
+    const r=ripples[i],age=t-r.t;
+    if(age>2.4){ripples.splice(i,1);continue;}
+    const [x,y]=bobAt(r.side);
+    for(let k=0;k<3;k++){
+      const u=(age-k*.22)/1.8;if(u<=0||u>=1)continue;
+      const e=1-Math.pow(1-u,3);
+      const rad=G.drumR*(1.05+e*2.3);
+      g.strokeStyle=rgba(C.wood,(1-u)*(1-u)*(.62-k*.16));g.lineWidth=(1.4+(1-u)*2.2)*(1-k*.2);
+      g.beginPath();g.arc(x,y,rad,0,Math.PI*2);g.stroke();
+    }
+  }
+}
+function drawStrings(bx,by){
+  const barHalf=Math.min(90,W*.08);
+  if(G.py>18){
+    g.strokeStyle=rgba(C.line,.45);g.lineWidth=2;g.lineCap='round';
+    g.beginPath();g.moveTo(G.px-barHalf,G.py);g.lineTo(G.px+barHalf,G.py);g.stroke();
+  }
+  // bifilar V, as in a pendulum-wave rig: two fine strings keep the swing in one plane
+  g.strokeStyle=rgba(C.line,.3);g.lineWidth=.8;
+  const off=G.py>18?barHalf*.55:0;
+  g.beginPath();g.moveTo(G.px-off,G.py);g.lineTo(bx,by);g.moveTo(G.px+off,G.py);g.lineTo(bx,by);g.stroke();
+}
+function drawTrail(t){
+  if(!trailsOn||trail.length<2)return;
+  g.lineCap='round';g.lineJoin='round';
+  const bands=8;
+  for(let k=0;k<bands;k++){
+    const a0=.75*k/bands,a1=.75*(k+1)/bands,u=1-(a0+a1)/1.5;
+    g.beginPath();let started=false;
+    for(const p of trail){const age=t-p.t;if(age<a0-.02||age>a1)continue;
+      if(!started){g.moveTo(p.x,p.y);started=true;}else g.lineTo(p.x,p.y);}
+    if(!started)continue;
+    g.strokeStyle=rgba(mix(C.bob,C.mist,.55),u*u*.22);g.lineWidth=G.bobR*1.6*u;g.stroke();
+  }
+}
+function drawBob(x,y,k){
+  const R=G.bobR, col=mix(C.bob,C.wood,k), hr=R*(5+k*3);
+  const halo=g.createRadialGradient(x,y,0,x,y,hr);
+  halo.addColorStop(0,rgba(mix(col,C.mist,.45*(1-k)),.22+k*.3));halo.addColorStop(1,rgba(col,0));
+  g.fillStyle=halo;g.beginPath();g.arc(x,y,hr,0,Math.PI*2);g.fill();
+  const core=g.createRadialGradient(x-R*.3,y-R*.35,R*.1,x,y,R);
+  core.addColorStop(0,'rgba(255,255,255,.95)');core.addColorStop(.35,rgba(col,1));core.addColorStop(1,rgba(col,.8));
+  g.fillStyle=core;g.beginPath();g.arc(x,y,R*(1+k*.12),0,Math.PI*2);g.fill();
+}
+
+function frame(){
+  const t=now();
+  const dt=Math.min(.1,Math.max(0,t-lastNow));lastNow=t;
+  if(state==='running'||state==='pulling'||(state==='ending'&&t<stopAt))elapsed+=dt;
+
+  xNow=position(t);
+  const [bx,by]=bobAt(xNow);
+
+  // hits whose time has arrived
+  for(const h of hits){if(!h.shown&&t>=h.t){h.shown=true;passes++;drumGlow[h.side<0?0:1]=1;
+    if(!reduceMotion)ripples.push({t:h.t,side:h.side});}}
+  hits=hits.filter(h=>!h.shown||t-h.t<2);
+  drumGlow[0]*=Math.exp(-dt*2.6);drumGlow[1]*=Math.exp(-dt*2.6);
+
+  if(trail.length&&t<trail[trail.length-1].t)trail.length=0;
+  trail.push({x:bx,y:by,t});while(trail.length&&t-trail[0].t>.8)trail.shift();
+
+  drawBackground(performance.now()/1000);
+  drawRipples(t);
+  drawDrum(-1,drumGlow[0],t);drawDrum(1,drumGlow[1],t);
+  drawTrail(t);
+  drawStrings(bx,by);
+  drawBob(bx,by,Math.max(drumGlow[0],drumGlow[1]));
+
+  if((frame.n=(frame.n||0)+1)%6===0)updateReadout();
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+
+/* ---------- controls ---------- */
+function toggle(){
+  if(state==='running'||state==='pulling'){if(state==='pulling'){state='idle';setPlayIcon(false);releaseWake();}else stop(false);}
+  else if(state==='idle'||state==='rest'){if(state==='rest')setNo++;start();}
+}
+$('play').addEventListener('click',toggle);
+$('cont').addEventListener('click',()=>{setNo++;start();});
+document.querySelectorAll('[data-rate]').forEach(b=>b.addEventListener('click',()=>{
+  document.querySelectorAll('[data-rate]').forEach(x=>x.setAttribute('aria-pressed',x===b));changeRate(+b.dataset.rate);}));
+document.querySelectorAll('[data-voice]').forEach(b=>b.addEventListener('click',()=>{
+  document.querySelectorAll('[data-voice]').forEach(x=>x.setAttribute('aria-pressed',x===b));voice=b.dataset.voice;
+  initAudio();if(ac.state==='suspended')ac.resume();if(state!=='running')strike(ac.currentTime+.02,0);}));
+document.querySelectorAll('[data-set]').forEach(b=>b.addEventListener('click',()=>{
+  document.querySelectorAll('[data-set]').forEach(x=>x.setAttribute('aria-pressed',x===b));setLen=+b.dataset.set;setPasses=0;updateReadout();}));
+document.querySelectorAll('[data-wind]').forEach(b=>b.addEventListener('click',()=>{
+  document.querySelectorAll('[data-wind]').forEach(x=>x.setAttribute('aria-pressed',x===b));
+  const v=b.dataset.wind;windOn=v!=='off';if(windOn)setWindType(v);
+  initAudio();if(ac.state==='suspended')ac.resume();startWind();
+  windNodes&&windNodes.out.gain.setTargetAtTime(windTarget(),ac.currentTime,.8);}));
+$('windVol').addEventListener('input',e=>{windVol=+e.target.value;if(windNodes)windNodes.out.gain.setTargetAtTime(windTarget(),ac.currentTime,.1);});
+$('vol').addEventListener('input',e=>{vol=+e.target.value;if(master)master.gain.setTargetAtTime(vol*vol,ac.currentTime,.05);});
+$('trails').setAttribute('aria-pressed',trailsOn);
+$('trails').addEventListener('click',e=>{trailsOn=!trailsOn;e.currentTarget.setAttribute('aria-pressed',trailsOn);});
+let idleTimer=null,manualHide=false;
+function setHidden(h){document.body.classList.toggle('hide-ui',h);}
+function poke(){
+  if(manualHide){manualHide=false;setHidden(false);return;}
+  setHidden(false);clearTimeout(idleTimer);
+  idleTimer=setTimeout(()=>{if(state==='running'&&!$('sheet').classList.contains('on'))setHidden(true);},3500);
+}
+$('hideUi').addEventListener('click',e=>{e.stopPropagation();manualHide=true;setHidden(true);});
+['pointermove','pointerdown'].forEach(ev=>addEventListener(ev,e=>{if(manualHide&&ev==='pointermove'&&e.pointerType!=='mouse')return;if(manualHide&&ev==='pointermove')return;poke();}));
+addEventListener('keydown',e=>{if(e.code==='KeyH'){manualHide=!document.body.classList.contains('hide-ui');setHidden(manualHide);}else poke();});
+const MOON='<path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/>',SUN='<circle cx="12" cy="12" r="4"/><path d="M12 2.5v2.5M12 19v2.5M2.5 12H5M19 12h2.5M5.3 5.3l1.8 1.8M16.9 16.9l1.8 1.8M5.3 18.7l1.8-1.8M16.9 7.1l1.8-1.8"/>';
+function syncThemeBtn(){const n=isNight();$('themeIcon').innerHTML=n?SUN:MOON;$('theme').setAttribute('aria-label',n?'Switch to light mode (T)':'Switch to dark mode (T)');}
+function setTheme(t){document.documentElement.dataset.theme=t;try{localStorage.setItem('ma-theme',t);}catch(e){}syncThemeBtn();}
+try{const saved=localStorage.getItem('ma-theme');if(saved==='dark'||saved==='light')document.documentElement.dataset.theme=saved;}catch(e){}
+syncThemeBtn();
+$('theme').addEventListener('click',()=>setTheme(isNight()?'light':'dark'));
+addEventListener('keydown',e=>{if(e.code==='KeyT'&&e.target.tagName!=='INPUT')setTheme(isNight()?'light':'dark');});
+$('info').addEventListener('click',e=>{const on=$('sheet').classList.toggle('on');e.currentTarget.setAttribute('aria-expanded',on);});
+addEventListener('keydown',e=>{
+  if(e.target.tagName==='INPUT')return;
+  if(e.code==='Space'){e.preventDefault();if(state==='rest'){setNo++;start();}else toggle();}
+  const map={Digit1:.5,Digit2:.8,Digit3:1,Digit4:1.2};
+  if(map[e.code]){const b=document.querySelector(`[data-rate="${map[e.code]}"]`);b&&b.click();}
+});
+document.addEventListener('visibilitychange',()=>{if(!document.hidden&&(state==='running'||state==='pulling'))requestWake();});
+})();
+</script>
+</body>
+</html>
