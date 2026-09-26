@@ -7,19 +7,19 @@
 <style>
 :root{
   --ground:#f6f5f1; --ground-edge:#ebeae4; --mist:#dfe2ec; --line:#4a5582; --bob:#4a5582;
-  --wood:#b48a52; --text:#232a45; --dim:#4f5775; --panel:rgba(252,252,250,.86); --edge:rgba(74,85,130,.2);
+  --text:#232a45; --dim:#4f5775; --panel:rgba(252,252,250,.86); --edge:rgba(74,85,130,.2);
   --btn:rgba(74,85,130,.07); --btn-on:rgba(74,85,130,.16);
 }
 @media (prefers-color-scheme: dark){
   :root:not([data-theme="light"]){
   --ground:#161a2c; --ground-edge:#10131f; --mist:#262c4a; --line:#a9b3dc; --bob:#e2e6f7;
-  --wood:#d9b57c; --text:#e8eaf3; --dim:#a8aec8; --panel:rgba(24,28,46,.88); --edge:rgba(200,208,240,.18);
+  --text:#e8eaf3; --dim:#a8aec8; --panel:rgba(24,28,46,.88); --edge:rgba(200,208,240,.18);
   --btn:rgba(200,208,240,.07); --btn-on:rgba(200,208,240,.18);
   }
 }
 :root[data-theme="dark"]{
   --ground:#161a2c; --ground-edge:#10131f; --mist:#262c4a; --line:#a9b3dc; --bob:#e2e6f7;
-  --wood:#d9b57c; --text:#e8eaf3; --dim:#a8aec8; --panel:rgba(24,28,46,.88); --edge:rgba(200,208,240,.18);
+  --text:#e8eaf3; --dim:#a8aec8; --panel:rgba(24,28,46,.88); --edge:rgba(200,208,240,.18);
   --btn:rgba(200,208,240,.07); --btn-on:rgba(200,208,240,.18);
 }
 :root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
@@ -118,7 +118,7 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--line);outline-o
   <h3>Why the drum follows the eyes</h3>
   <p>In lab comparisons, eye movements taxed working memory more than alternating tones. So the pendulum does the main work and the drum marks each side. The drum is synthesized, with overtones placed where a real circular drumhead puts them.</p>
   <h3>Why these colors</h3>
-  <p>In Valdez and Mehrabian's color study, brightness raised pleasure and lowered arousal, saturation raised arousal, and blue, purple-blue and blue-green were among the most pleasant hues. So the page is bright, low-saturation washi paper painted in a single soft indigo ink, like a sumi-e wash painting, with one warm note: the gold that marks each strike. Night mode keeps the same single ink on deep indigo rather than black, which that study found the most arousing neutral.</p>
+  <p>In Valdez and Mehrabian's color study, brightness raised pleasure and lowered arousal, saturation raised arousal, and blue, purple-blue and blue-green were among the most pleasant hues. So the page is bright, low-saturation washi paper painted in a single soft indigo ink, like a sumi-e wash painting; even the strikes are marked in that same ink. Night mode keeps the same single ink on deep indigo rather than black, which that study found the most arousing neutral.</p>
   <h3>Why the wind</h3>
   <p>Brown noise drops off steeply in the high frequencies and sounds like distant surf or deep wind. Pink noise keeps equal energy in every octave, so it's a little brighter, closer to steady rain, but still far softer than the hiss of white noise. It plays equally in both ears, so it never blurs the left and right of the drum. It swells and fades over tens of seconds, never in time with the beat, and the grass follows the same swell.</p>
   <h3>What this is for</h3>
@@ -176,7 +176,7 @@ function isNight(){const d=document.documentElement.dataset.theme;return d?d==='
 let TH={};
 function hexRgb(h){h=h.trim().replace('#','');if(h.length===3)h=h.split('').map(c=>c+c).join('');const n=parseInt(h,16);return[(n>>16)&255,(n>>8)&255,n&255];}
 function readTokens(){const s=getComputedStyle(document.documentElement);
-  ['ground','ground-edge','mist','line','bob','wood'].forEach(k=>C[k]=hexRgb(s.getPropertyValue('--'+k)));}
+  ['ground','ground-edge','mist','line','bob'].forEach(k=>C[k]=hexRgb(s.getPropertyValue('--'+k)));}
 const rgba=(c,a)=>`rgba(${c[0]},${c[1]},${c[2]},${a})`;
 readTokens();
 matchMedia('(prefers-color-scheme: dark)').addEventListener('change',()=>{readTokens();buildLayers&&buildLayers();});
@@ -567,8 +567,8 @@ function drawArcGuide(){
 function drawDrum(side,glow,t){
   const [x,y]=bobAt(side),R=G.drumR;
   if(glow>.01){const gg=g.createRadialGradient(x,y,0,x,y,R*1.6);
-    gg.addColorStop(0,rgba(C.wood,.16*glow));gg.addColorStop(1,rgba(C.wood,0));g.fillStyle=gg;g.fillRect(x-R*1.6,y-R*1.6,R*3.2,R*3.2);}
-  g.lineWidth=1.2;g.strokeStyle=rgba(mix(C.line,C.wood,glow),.16+glow*.45);
+    gg.addColorStop(0,rgba(C.line,.16*glow));gg.addColorStop(1,rgba(C.line,0));g.fillStyle=gg;g.fillRect(x-R*1.6,y-R*1.6,R*3.2,R*3.2);}
+  g.lineWidth=1.2;g.strokeStyle=rgba(C.line,.16+glow*.45);
   g.beginPath();g.arc(x,y,R,0,Math.PI*2);g.stroke();
 }
 // Echo: three rings leave each struck drum a beat apart, like sound spreading from the skin.
@@ -611,7 +611,7 @@ function drawTrail(t){
   }
 }
 function drawBob(x,y,k){
-  const R=G.bobR, col=mix(C.bob,C.wood,k), hr=R*(5+k*3);
+  const R=G.bobR, col=C.bob, hr=R*(5+k*3);
   const halo=g.createRadialGradient(x,y,0,x,y,hr);
   halo.addColorStop(0,rgba(mix(col,C.mist,.45*(1-k)),.22+k*.3));halo.addColorStop(1,rgba(col,0));
   g.fillStyle=halo;g.beginPath();g.arc(x,y,hr,0,Math.PI*2);g.fill();
