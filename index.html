@@ -396,7 +396,7 @@ const ridges=[0,1,2,3].map(i=>({f:[.0016+rnd()*.0012,.004+rnd()*.003,.011+rnd()*
 const fog=[0,1,2,3].map(i=>[0,1,2].map(j=>({x:rnd(),sp:.004+rnd()*.006,w:.35+rnd()*.3})));
 function ridgeY(r,x,base,amp){const f=r.f,p=r.p;
   return base-amp*(.55*Math.sin(x*f[0]+p[0])+.30*Math.sin(x*f[1]+p[1])+.15*Math.sin(x*f[2]+p[2])+.4);}
-// Sumi-e wash painting on washi paper, all generated here: a pale moon in a peach cloud wash,
+// Sumi-e wash painting on washi paper, all generated here: a pale moon sinking behind the ranges,
 // far ink-wash mountains dissolving into mist, and susuki grass bending in the lower left.
 // Soft areas are painted small and scaled up, which blurs them like wet paper.
 const layers={};
@@ -404,7 +404,11 @@ const gauss=()=>{let u=0;for(let i=0;i<4;i++)u+=rnd();return (u-2)/2;};
 function mkCanvas(key,sc){const c=layers[key]||document.createElement('canvas');
   c.width=Math.max(8,Math.round(W*sc));c.height=Math.max(8,Math.round(H*sc));layers[key]=c;
   const o=c.getContext('2d');o.setTransform(sc,0,0,sc,0,0);o.clearRect(0,0,W,H);return o;}
-function moonGeom(){const mr=Math.max(24,Math.min(W,H)*.075);return{mr,mx:W-mr*1.7-W*.03,my:H*.04+mr*1.2};}
+// the moon sits low, half sunk behind the ranges, between the peaks on the right
+function moonGeom(){const S=Math.min(W,H),portrait=H>W,mr=Math.max(24,S*.075);
+  const baseY=H*(portrait?.8:.78),x0=W*(portrait?.28:.42);
+  return{mr,mx:x0+(W-x0)*.84,my:baseY-S*.11};}
+let skyClip=null;
 function blob(o,x,y,r,col,a){const gr=o.createRadialGradient(x,y,0,x,y,r);
   gr.addColorStop(0,`rgba(${col},${a})`);gr.addColorStop(1,`rgba(${col},0)`);o.fillStyle=gr;o.fillRect(x-r,y-r,r*2,r*2);}
 buildLayers=function(){
@@ -434,21 +438,17 @@ buildLayers=function(){
   // an occasional bark fleck, as in kozo paper
   for(let i=0;i<Math.round(W*H/60000);i++){const x=rnd()*W,y=rnd()*H;
     o.fillStyle=`rgba(${TH.fleck},${.08+rnd()*.08})`;o.beginPath();o.ellipse(x,y,.8+rnd()*1.8,.5+rnd()*.8,rnd()*3,0,6.283);o.fill();}
-  // peach and rose cloud wash around the moon
-  seed=17;o=mkCanvas('wash',1/1.5);
-  const {mr,mx,my}=moonGeom();
-  const warm=[PALE,PALE,INK,PALE];
-  for(let i=0;i<22;i++){const x=mx-mr*2+gauss()*W*.15,y=my+gauss()*mr*1.2,r=mr*(1.1+rnd()*1.8);
-    blob(o,x,y,r,warm[i%4],.035+rnd()*.035);}
   // mountains: far pale lavender range and a nearer blue one, bases dissolving into mist
   seed=29;o=mkCanvas('mount',1/2.5);
   const baseY=H*(portrait?.8:.78),x0=W*(portrait?.28:.42);
+  const ridges=[];
   const range=(peaks,col,alpha,hScale,sc)=>{
     const ph=peaks.map(([px,h])=>({x:x0+(W-x0)*px,h:S*h*hScale,w:S*(.07+h*.9)}));
     const nz=[rnd()*9,rnd()*9,rnd()*9];
     const ridge=x=>{let y=0;for(const p of ph){const d=Math.abs(x-p.x)/p.w;if(d<1)y=Math.max(y,p.h*Math.pow(1-d,1.35)*(1-.25*d*d));}
       y+=S*.004*(Math.sin(x*.05+nz[0])+.6*Math.sin(x*.13+nz[1])+.35*Math.sin(x*.31+nz[2]));
       return baseY-Math.max(0,y);};
+    ridges.push(ridge);
     // three offset passes of thin wash, like layered glazes
     for(let pass=0;pass<3;pass++){
       const ox=(rnd()-.5)*S*.01,oy=(rnd()-.5)*S*.004;
@@ -469,6 +469,10 @@ buildLayers=function(){
   };
   range([[.04,.05],[.2,.09],[.37,.15],[.56,.1],[.74,.17],[.93,.09]],PALE,.55,1);
   range([[.16,.05],[.44,.08],[.63,.12],[.87,.07]],INK,.42,.95);
+  // the sky above both ridges; the moon is clipped to it so the mountains hide its lower half
+  skyClip=new Path2D();skyClip.moveTo(-10,-10);skyClip.lineTo(W+10,-10);
+  for(let x=W+10;x>=x0-W*.08;x-=3)skyClip.lineTo(x,Math.min(...ridges.map(r=>r(x))));
+  skyClip.lineTo(-10,baseY);skyClip.closePath();
   // small tree dabs on the near slopes
   for(let i=0;i<70;i++){const x=x0+(W-x0)*(.3+rnd()*.7),y=baseY-S*(.01+rnd()*.05);
     o.fillStyle=`rgba(${INK},${.06+rnd()*.08})`;o.beginPath();o.ellipse(x,y,S*(.004+rnd()*.006),S*.003,0,0,Math.PI*2);o.fill();}
@@ -535,11 +539,12 @@ function drawBackground(t){
   g.imageSmoothingEnabled=true;g.imageSmoothingQuality='high';
   layers.formation&&g.drawImage(layers.formation,0,0,W,H);
   layers.paper&&g.drawImage(layers.paper,0,0,W,H);
-  layers.wash&&g.drawImage(layers.wash,0,0,W,H);
   const{mr,mx,my}=moonGeom();
+  g.save();skyClip&&g.clip(skyClip);
   if(isNight()){const mg=g.createRadialGradient(mx,my,mr*.9,mx,my,mr*3.2);mg.addColorStop(0,`rgba(${TH.moon},.14)`);mg.addColorStop(1,`rgba(${TH.moon},0)`);
     g.fillStyle=mg;g.fillRect(mx-mr*3.2,my-mr*3.2,mr*6.4,mr*6.4);}
   g.fillStyle=`rgba(${TH.moon},${TH.moonA})`;g.beginPath();g.arc(mx,my,mr,0,Math.PI*2);g.fill();
+  g.restore();
   layers.mount&&g.drawImage(layers.mount,0,0,W,H);
   // mist drifting across the mountain feet, very slowly
   const baseY=H*(H>W?.8:.78);
