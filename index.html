@@ -581,7 +581,7 @@ function drawRipples(t){
       const u=(age-k*.22)/1.8;if(u<=0||u>=1)continue;
       const e=1-Math.pow(1-u,3);
       const rad=G.drumR*(1.05+e*2.3);
-      g.strokeStyle=rgba(C.wood,(1-u)*(1-u)*(.62-k*.16));g.lineWidth=(1.4+(1-u)*2.2)*(1-k*.2);
+      g.strokeStyle=rgba(C.line,(1-u)*(1-u)*(.62-k*.16));g.lineWidth=(1.4+(1-u)*2.2)*(1-k*.2);
       g.beginPath();g.arc(x,y,rad,0,Math.PI*2);g.stroke();
     }
   }
