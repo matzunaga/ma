@@ -405,7 +405,7 @@ function mkCanvas(key,sc){const c=layers[key]||document.createElement('canvas');
   c.width=Math.max(8,Math.round(W*sc));c.height=Math.max(8,Math.round(H*sc));layers[key]=c;
   const o=c.getContext('2d');o.setTransform(sc,0,0,sc,0,0);o.clearRect(0,0,W,H);return o;}
 // the moon sits low, half sunk behind the ranges, between the peaks on the right
-function moonGeom(){const S=Math.min(W,H),portrait=H>W,mr=Math.max(24,S*.075);
+function moonGeom(){const S=Math.min(W,H),portrait=H>W,mr=Math.max(29,S*.09);
   const baseY=H*(portrait?.8:.78),x0=W*(portrait?.28:.42);
   return{mr,mx:x0+(W-x0)*.84,my:baseY-S*.11};}
 let skyClip=null;
@@ -415,8 +415,8 @@ buildLayers=function(){
   const S=Math.min(W,H),portrait=H>W,INK=C.line.join(','),PALE=mix(C.line,C.ground,.45).join(',');
   const night=isNight();
   TH=night?{hi:mix(C.ground,C.line,.4).join(','),hiA:.22,lo:'0,0,0',loA:.7,fleck:'0,0,0',mist:mix(C.ground,C.mist,.35).join(','),
-             moon:'212,217,236',moonA:.82,form:.12}
-           :{hi:'255,255,255',hiA:1,lo:'112,106,92',loA:1,fleck:'96,88,72',mist:'250,250,248',moon:'255,255,254',moonA:.97,form:1};
+             moon:'212,217,236',moonA:.75,form:.12}
+           :{hi:'255,255,255',hiA:1,lo:'112,106,92',loA:1,fleck:'96,88,72',mist:'250,250,248',moon:'255,255,254',moonA:.75,form:1};
   // washi paper: cloudy formation where the pulp settled unevenly, long kozo fibres, fine grain
   seed=3;let o=mkCanvas('formation',1/3);
   for(let i=0;i<140;i++){const x=rnd()*W,y=rnd()*H,r=Math.min(W,H)*(.02+rnd()*.05);
