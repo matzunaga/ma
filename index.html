@@ -44,7 +44,9 @@ body.hide-ui .sheet{opacity:0;pointer-events:none}
 body.hide-ui{cursor:none}
 .seal{position:fixed;top:calc(env(safe-area-inset-top,0px) + 22px);left:24px;width:30px;height:38px;border:1.5px solid var(--line);
   border-radius:4px;color:var(--line);display:grid;place-items:center;font:500 19px "Hiragino Mincho ProN","Yu Mincho","Noto Serif CJK JP",serif;
-  opacity:.7;pointer-events:none}
+  opacity:.7;background:none;padding:0;cursor:pointer;transition:opacity .3s}
+.seal:hover,.seal[aria-expanded="true"]{opacity:1}
+.seal:focus-visible{outline:1.5px solid var(--line);outline-offset:3px}
 .status .k{color:var(--line)}
 .vh{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 .hint{width:min(600px,90vw);text-align:center;font-size:15px;font-weight:400;line-height:1.55;color:var(--text);
@@ -90,6 +92,12 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--line);outline-o
 .sheet h3{font-weight:400;font-size:14px;margin:14px 0 4px}
 .sheet h3:first-child{margin-top:0}
 .sheet p{margin:0;color:var(--dim);font-weight:400}
+.sheet.about{top:calc(env(safe-area-inset-top,0px) + 72px);left:24px;right:auto;bottom:auto;width:min(300px,calc(100vw - 48px));
+  transform:translateY(-8px)}
+.sheet.about.on{transform:none}
+.about h3{font:500 22px "Hiragino Mincho ProN","Yu Mincho","Noto Serif CJK JP",serif;color:var(--line);margin:0 0 8px;letter-spacing:.04em}
+.about h3 span{font:300 14px inherit;font-family:inherit;color:var(--dim);letter-spacing:0;margin-left:6px}
+.about p+p{margin-top:10px}
 
 @media (max-width:720px){
   .status{font-size:10px}
@@ -98,6 +106,7 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--line);outline-o
   input[type=range]{width:74px}
   .sheet{top:calc(env(safe-area-inset-top,0px) + 16px);bottom:auto;left:18px;right:18px;width:auto}
   .seal{left:16px}
+  .sheet.about{left:16px;right:16px;width:auto}
 }
 </style>
 </head>
@@ -105,7 +114,12 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--line);outline-o
 <canvas id="c" aria-hidden="true"></canvas>
 
 <h1 class="vh">Ma, a bilateral pendulum</h1>
-<div class="seal" aria-hidden="true">間</div>
+<button class="seal" id="seal" aria-label="What Ma means" aria-expanded="false" aria-controls="about">間</button>
+<aside class="sheet about" id="about" aria-label="What Ma means">
+  <h3>間 <span>ma</span></h3>
+  <p>A Japanese word for the space between: the pause between two notes, the gap between breaths, the stillness that gives shape to everything around it.</p>
+  <p>The character shows the sun 日 seen through a gate 門, light through an opening. Here it is the quiet between each strike, where the mind can settle.</p>
+</aside>
 
 <div class="rest" id="rest" role="dialog" aria-label="Set complete">
   <div><h2>Set complete</h2><p>Take a breath. Notice what is here now.</p>
@@ -677,7 +691,7 @@ function setHidden(h){document.body.classList.toggle('hide-ui',h);}
 function poke(){
   if(manualHide){manualHide=false;setHidden(false);return;}
   setHidden(false);clearTimeout(idleTimer);
-  idleTimer=setTimeout(()=>{if(state==='running'&&!$('sheet').classList.contains('on'))setHidden(true);},3500);
+  idleTimer=setTimeout(()=>{if(state==='running'&&!$('sheet').classList.contains('on')&&!$('about').classList.contains('on'))setHidden(true);},3500);
 }
 $('hideUi').addEventListener('click',e=>{e.stopPropagation();manualHide=true;setHidden(true);});
 ['pointermove','pointerdown'].forEach(ev=>addEventListener(ev,e=>{if(manualHide&&ev==='pointermove'&&e.pointerType!=='mouse')return;if(manualHide&&ev==='pointermove')return;poke();}));
@@ -689,7 +703,12 @@ try{const saved=localStorage.getItem('ma-theme');if(saved==='dark'||saved==='lig
 syncThemeBtn();
 $('theme').addEventListener('click',()=>setTheme(isNight()?'light':'dark'));
 addEventListener('keydown',e=>{if(e.code==='KeyT'&&e.target.tagName!=='INPUT')setTheme(isNight()?'light':'dark');});
-$('info').addEventListener('click',e=>{const on=$('sheet').classList.toggle('on');e.currentTarget.setAttribute('aria-expanded',on);});
+function openPanel(id,on){const btn=$(id==='about'?'seal':'info');$(id).classList.toggle('on',on);btn.setAttribute('aria-expanded',on);}
+$('info').addEventListener('click',()=>{const on=!$('sheet').classList.contains('on');openPanel('about',false);openPanel('sheet',on);});
+$('seal').addEventListener('click',()=>{const on=!$('about').classList.contains('on');openPanel('sheet',false);openPanel('about',on);});
+// the meaning card closes with Escape or a click anywhere outside it
+addEventListener('keydown',e=>{if(e.code==='Escape')openPanel('about',false);});
+addEventListener('pointerdown',e=>{if(!e.target.closest('#about,#seal'))openPanel('about',false);});
 addEventListener('keydown',e=>{
   if(e.target.tagName==='INPUT')return;
   if(e.code==='Space'){e.preventDefault();if(state==='rest'){setNo++;start();}else toggle();}
