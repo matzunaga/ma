@@ -442,7 +442,8 @@ buildLayers=function(){
   seed=29;o=mkCanvas('mount',1/2.5);
   const baseY=H*(portrait?.8:.78),x0=W*(portrait?.28:.42);
   const ridges=[];
-  const range=(peaks,col,alpha,hScale,sc)=>{
+  const range=(peaks,col,alpha,hScale,base=baseY)=>{
+    const baseY=base;
     const ph=peaks.map(([px,h])=>({x:x0+(W-x0)*px,h:S*h*hScale,w:S*(.07+h*.9)}));
     const nz=[rnd()*9,rnd()*9,rnd()*9];
     const ridge=x=>{let y=0;for(const p of ph){const d=Math.abs(x-p.x)/p.w;if(d<1)y=Math.max(y,p.h*Math.pow(1-d,1.35)*(1-.25*d*d));}
@@ -478,6 +479,10 @@ buildLayers=function(){
     o.fillStyle=`rgba(${INK},${.06+rnd()*.08})`;o.beginPath();o.ellipse(x,y,S*(.004+rnd()*.006),S*.003,0,0,Math.PI*2);o.fill();}
   // mist swallowing the mountain feet
   for(let i=0;i<24;i++)blob(o,x0+rnd()*(W-x0)*1.1,baseY+gauss()*S*.02,S*(.05+rnd()*.07),TH.mist,.55);
+  // low foothills in front, rising out of that mist to fill the space below the ranges
+  const footY=baseY+S*.1;
+  range([[.08,.04],[.3,.07],[.52,.05],[.7,.08],[.9,.06]],INK,.36,.9,footY);
+  for(let i=0;i<22;i++)blob(o,x0+rnd()*(W-x0)*1.1,footY+gauss()*S*.02,S*(.05+rnd()*.07),TH.mist,.5);
   // ground mist under the grass
   seed=41;o=mkCanvas('gmist',1/2);
   const gx=W*(portrait?.02:.03),gy=H*.97,gs=S*(portrait?.95:.78);
